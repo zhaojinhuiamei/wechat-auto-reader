@@ -32,7 +32,7 @@ export async function GET() {
         schedule: '每天 UTC 0:00 (北京时间 8:00)'
       }
     },
-    tips: []
+    tips: [] as string[]
   }
 
   // 添加配置提示
