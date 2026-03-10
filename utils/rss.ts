@@ -18,7 +18,9 @@ export interface WeChatArticle {
 export async function fetchWeChatArticles(accountRoute: string): Promise<WeChatArticle[]> {
   try {
     const rsshubUrl = process.env.RSSHUB_BASE_URL || 'https://rsshub.app'
-    const feedUrl = `${rsshubUrl}${accountRoute}`
+    // 确保route以/开头
+    const normalizedRoute = accountRoute.startsWith('/') ? accountRoute : `/${accountRoute}`
+    const feedUrl = `${rsshubUrl}${normalizedRoute}`
 
     console.log(`正在抓取RSS源: ${feedUrl}`)
 
