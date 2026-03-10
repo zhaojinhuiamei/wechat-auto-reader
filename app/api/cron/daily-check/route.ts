@@ -48,26 +48,32 @@ export async function GET(request: NextRequest) {
         id,
         user_id,
         account_name,
-        rsshub_route,
-        users (
-          email
-        ),
-        feishu_configs!inner (
-          webhook_url,
-          is_active
-        )
+        rsshub_route
       `)
       .eq('is_active', true)
-      .eq('feishu_configs.is_active', true)
 
     if (accountsError) {
       throw new Error(`获取公众号配置失败: ${accountsError.message}`)
     }
 
-    console.log(`找到 ${accounts?.length || 0} 个激活的监控配置`)
+    // 2. 获取对应的飞书配置
+    const userIds = accounts?.map(a => a.user_id) || []
+    const { data: feishuConfigs } = await supabaseAdmin
+      .from('feishu_configs')
+      .select('user_id, webhook_url')
+      .in('user_id', userIds)
+      .eq('is_active', true)
 
-    // 2. 遍历每个公众号
-    for (const account of accounts || []) {
+    // 3. 合并数据
+    const accountsWithFeishu = accounts?.map(account => ({
+      ...account,
+      webhook_url: feishuConfigs?.find(f => f.user_id === account.user_id)?.webhook_url
+    })).filter(a => a.webhook_url) || []
+
+    console.log(`找到 ${accountsWithFeishu?.length || 0} 个激活的监控配置`)
+
+    // 4. 遍历每个公众号
+    for (const account of accountsWithFeishu || []) {
       try {
         console.log(`\n处理公众号: ${account.account_name}`)
 
@@ -136,7 +142,7 @@ export async function GET(request: NextRequest) {
               .eq('id', articleRecord.id)
 
             // 8. 发送飞书通知
-            const webhookUrl = (account.feishu_configs as any)?.[0]?.webhook_url
+            const webhookUrl = account.webhook_url
             if (webhookUrl) {
               await sendFeishuNotification(
                 webhookUrl,
